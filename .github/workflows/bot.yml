@@ -1,0 +1,43 @@
+name: ETHWyckoffBot
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: bot-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  run-bot:
+    runs-on: windows-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Create appsettings.json
+        env:
+          APPSETTINGS_JSON: ${{ secrets.APPSETTINGS_JSON }}
+        shell: pwsh
+        run: |
+          $path = "src\ETHWyckoffBot\appsettings.json"
+          $json = $env:APPSETTINGS_JSON
+          if (-not $json) {
+            Write-Error "APPSETTINGS_JSON secret not set"
+            exit 1
+          }
+          Set-Content -Path $path -Value $json -Encoding UTF8
+          Write-Host "appsettings.json created"
+
+      - name: Build
+        run: dotnet build src\ETHWyckoffBot -c Release
+
+      - name: Run Bot
+        run: dotnet run --project src\ETHWyckoffBot -c Release
+        shell: pwsh

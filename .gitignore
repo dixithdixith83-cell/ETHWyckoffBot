@@ -1,0 +1,10 @@
+bin/
+obj/
+logs/
+*.user
+*.suo
+*.userprefs
+.vs/
+.DS_Store
+appsettings.json
+!appsettings.template.json

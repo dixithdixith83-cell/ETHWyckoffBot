@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ETHWyckoffBot/ETHWyckoffBot.csproj" />
+    <Project Path="../OnChainBot/src/OnChainBot/OnChainBot.csproj" />
+  </Folder>
+</Solution>
