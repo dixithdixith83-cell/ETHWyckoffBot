@@ -172,22 +172,24 @@ public class TradingEngine : IDisposable
 
     private async Task FetchInitialData(SymbolState state)
     {
-        foreach (var tf in _config.Ladder.Timeframes)
+        var tasks = _config.Ladder.Timeframes.Select(async tf =>
         {
-            var candles = await _connector.GetOHLCVAsync(state.Symbol, tf, 100);
+            var candles = await _connector.GetOHLCVAsync(state.Symbol, tf, 20);
             state.CandleCache.AddCandles(tf, candles);
-            Log($"Loaded {candles.Count} candles for {state.Symbol} {tf}");
-        }
+        }).ToList();
+        await Task.WhenAll(tasks);
+        Log($"Loaded data for {state.Symbol}");
     }
 
     private async Task SyncPositionsAsync()
     {
-        foreach (var (sym, state) in _symbols)
+        var tasks = _symbols.Select(async kvp =>
         {
+            var (sym, state) = kvp;
             try
             {
                 var pos = await _connector.GetPositionAsync(sym);
-                if (pos == null) continue;
+                if (pos == null) return;
 
                 Log($"[{sym}] Found existing position: {pos.Direction} {pos.Quantity:F4} @ {pos.EntryPrice:F2}");
 
@@ -209,7 +211,8 @@ public class TradingEngine : IDisposable
             {
                 Log($"[{sym}] Position sync error: {ex.Message}");
             }
-        }
+        });
+        await Task.WhenAll(tasks);
     }
 
     private async Task StartMonitors()
@@ -290,10 +293,7 @@ public class TradingEngine : IDisposable
 
             int activePositions = _symbols.Values.Count(s => s.Position != null);
 
-            foreach (var state in _symbols.Values)
-            {
-                await ProcessSymbol(state, bal, activePositions);
-            }
+            await Task.WhenAll(_symbols.Values.Select(state => ProcessSymbol(state, bal, activePositions)));
         }
         catch (Exception ex)
         {
@@ -306,11 +306,17 @@ public class TradingEngine : IDisposable
     {
         try
         {
-            foreach (var tf in _config.Ladder.Timeframes)
+            var candleTasks = _config.Ladder.Timeframes.Select(async tf =>
             {
                 var candles = await _connector.GetOHLCVAsync(state.Symbol, tf, 2);
                 if (candles.Count > 0)
-                    state.CandleCache.AddCandle(tf, candles[^1]);
+                    return (tf, candles[^1]);
+                return (tf, (Candle?)null);
+            }).ToList();
+            var results = await Task.WhenAll(candleTasks);
+            foreach (var (tf, c) in results)
+            {
+                if (c != null) state.CandleCache.AddCandle(tf, c);
             }
 
             var latest = state.CandleCache.GetLatestAll();
