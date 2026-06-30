@@ -143,6 +143,23 @@ public class TradingEngine : IDisposable
         catch (Exception ex) { Log($"Realtime subscription failed: {ex.Message}"); }
     }
 
+    public async Task RunOnceAsync()
+    {
+        Log("RunOnce mode: one check cycle");
+        try
+        {
+            foreach (var state in _symbols.Values)
+                await FetchInitialData(state);
+        }
+        catch (Exception ex) { Log($"Initial data fetch failed: {ex.Message}"); }
+
+        try { await SyncPositionsAsync(); }
+        catch (Exception ex) { Log($"Position sync failed: {ex.Message}"); }
+
+        await OnTimerTick();
+        Log("RunOnce complete");
+    }
+
     public void Stop()
     {
         _isRunning = false;

@@ -73,6 +73,8 @@ public class Program
             return engine;
         });
 
+        var once = Environment.GetCommandLineArgs().Contains("--once");
+        services.AddSingleton(new BotMode { Once = once });
         services.AddHostedService<BotService>();
     }
 
@@ -92,29 +94,41 @@ public class Program
     }
 }
 
+public record BotMode { public bool Once { get; init; } }
+
 public class BotService : BackgroundService
 {
     private readonly TradingEngine _engine;
+    private readonly BotMode _mode;
 
-    public BotService(TradingEngine engine)
+    public BotService(TradingEngine engine, BotMode mode)
     {
         _engine = engine;
+        _mode = mode;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         Log.Information("BotService starting...");
-        Console.WriteLine($"Trading {_engine.Symbols.Count} coins.");
+        Console.WriteLine($"Trading {_engine.Symbols.Count} coins. Mode: {(_mode.Once ? "once" : "continuous")}");
 
-        await _engine.StartAsync();
-
-        try
+        if (_mode.Once)
         {
-            await Task.Delay(-1, stoppingToken);
+            await _engine.RunOnceAsync();
         }
-        catch (TaskCanceledException) { }
+        else
+        {
+            await _engine.StartAsync();
 
-        _engine.Stop();
+            try
+            {
+                await Task.Delay(-1, stoppingToken);
+            }
+            catch (TaskCanceledException) { }
+
+            _engine.Stop();
+        }
+
         Log.Information("BotService stopped");
     }
 }

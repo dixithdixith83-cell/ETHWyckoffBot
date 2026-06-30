@@ -2,17 +2,16 @@ name: ETHWyckoffBot
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '*/2 * * * *'
   workflow_dispatch:
 
 concurrency:
   group: bot-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
-  run-bot:
-    runs-on: windows-latest
-    timeout-minutes: 360
+  check-trades:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -26,18 +25,14 @@ jobs:
           APPSETTINGS_JSON: ${{ secrets.APPSETTINGS_JSON }}
         shell: pwsh
         run: |
-          $path = "src\ETHWyckoffBot\appsettings.json"
+          $path = "src/ETHWyckoffBot/appsettings.json"
           $json = $env:APPSETTINGS_JSON
-          if (-not $json) {
-            Write-Error "APPSETTINGS_JSON secret not set"
-            exit 1
-          }
+          if (-not $json) { Write-Error "APPSETTINGS_JSON secret not set"; exit 1 }
           Set-Content -Path $path -Value $json -Encoding UTF8
           Write-Host "appsettings.json created"
 
       - name: Build
-        run: dotnet build src\ETHWyckoffBot -c Release
+        run: dotnet build src/ETHWyckoffBot -c Release
 
-      - name: Run Bot
-        run: dotnet run --project src\ETHWyckoffBot -c Release
-        shell: pwsh
+      - name: Check market & trade
+        run: dotnet run --project src/ETHWyckoffBot -c Release -- --once
