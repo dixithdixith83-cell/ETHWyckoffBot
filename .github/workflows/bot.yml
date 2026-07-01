@@ -20,7 +20,8 @@ jobs:
         run: |
           $ip = (Invoke-WebRequest -Uri "https://api.ipify.org").Content.Trim()
           Write-Host "RUNNER_IP=$ip"
-        uses: actions/setup-dotnet@v4
+
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
 
