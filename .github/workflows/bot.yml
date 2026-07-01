@@ -15,7 +15,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET 10
+      - name: Get runner IP
+        shell: pwsh
+        run: |
+          $ip = (Invoke-WebRequest -Uri "https://api.ipify.org").Content.Trim()
+          Write-Host "RUNNER_IP=$ip"
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
